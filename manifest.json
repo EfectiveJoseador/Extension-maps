@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Map Collaborator",
+  "version": "1.0",
+  "description": "Collaborate on Google Maps by adding and sharing points of interest.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.google.com/maps/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/maps/*"],
+      "css": ["src/content.css"],
+      "js": ["src/content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
