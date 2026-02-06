@@ -257,6 +257,7 @@ const renderPoints = () => {
             if (confirm('Delete?')) {
                 points = points.filter(x => x.id !== p.id);
                 pendingDeletes.add(p.id);
+                savePoints();
                 renderPoints();
                 performSync(true);
             }
@@ -265,12 +266,17 @@ const renderPoints = () => {
     });
 };
 const savePoints = () => {
-    chrome.storage.local.set({ 'mapPoints': points, 'serverUrl': serverUrl });
+    chrome.storage.local.set({
+        'mapPoints': points,
+        'serverUrl': serverUrl,
+        'pendingDeletes': Array.from(pendingDeletes)
+    });
 };
 const loadPoints = () => {
-    chrome.storage.local.get(['mapPoints', 'serverUrl'], r => {
+    chrome.storage.local.get(['mapPoints', 'serverUrl', 'pendingDeletes'], r => {
         if (r.mapPoints) { points = r.mapPoints; renderPoints(); }
         if (r.serverUrl) { serverUrl = r.serverUrl; }
+        if (r.pendingDeletes) { pendingDeletes = new Set(r.pendingDeletes); }
     });
 };
 
@@ -304,11 +310,14 @@ const performSync = async (manual) => {
         const remotePoints = await r.json();
 
         const remoteIds = new Set(remotePoints.map(rp => rp.id));
+        let pendingDeletesChanged = false;
         for (const pd of pendingDeletes) {
             if (!remoteIds.has(pd)) {
                 pendingDeletes.delete(pd);
+                pendingDeletesChanged = true;
             }
         }
+        if (pendingDeletesChanged) savePoints();
 
         const map = new Map();
         points.forEach(p => map.set(p.id, p));
