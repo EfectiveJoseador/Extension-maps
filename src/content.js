@@ -305,7 +305,7 @@ const performSync = async (manual) => {
     const status = document.getElementById('mc-server-status');
     const btn = document.getElementById('mc-sync-btn');
     if (status) status.innerText = '🟡';
-    if (manual) btn.innerText = '...';
+    if (manual && btn) btn.innerText = '...';
 
     try {
         // 1. GET (Poll)
@@ -342,7 +342,7 @@ const performSync = async (manual) => {
         if (status) status.innerText = '🔴';
         if (manual) alert('Sync Failed: Check URL');
     } finally {
-        if (manual) btn.innerText = '🔄 Sync Now';
+        if (manual && btn) btn.innerText = '🔄 Sync Now';
     }
 };
 
