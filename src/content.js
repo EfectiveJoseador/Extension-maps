@@ -355,5 +355,21 @@ const performSync = async (manual) => {
     }
 };
 
-createUI();
-loadPoints();
+// --- INITIALIZATION ---
+const init = () => {
+    if (document.body) {
+        createUI();
+        loadPoints();
+        // Ensure it's visible if already created but hidden for some reason
+        const c = document.getElementById('mc-content');
+        if (c && isOpen) c.style.display = 'block';
+    } else {
+        setTimeout(init, 100);
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
