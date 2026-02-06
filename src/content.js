@@ -13,7 +13,7 @@ let initialMapTransform = null;
 let renderTimeUrlState = null;
 
 // Settings
-let serverUrl = 'http://localhost:3000/points';
+let serverUrl = 'https://ddfc9dc3-050c-4fc6-badb-de3281c9487c-00-39100q2wkh37y.spock.replit.dev/points';
 
 // Constants
 const PIN_SVG = `
@@ -287,7 +287,7 @@ const handleImport = (e) => {
 };
 
 const handleConfig = () => {
-    const url = prompt('Enter Sync Server URL (e.g. https://my-app.glitch.me/points):', serverUrl);
+    const url = prompt('Enter Sync Server URL', serverUrl);
     if (url) {
         serverUrl = url;
         savePoints();
