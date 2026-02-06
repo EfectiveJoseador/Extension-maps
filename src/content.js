@@ -104,11 +104,7 @@ const createUI = () => {
         <div class="mc-content" id="mc-content">
             <div class="mc-actions">
                 <button id="mc-add-btn" class="mc-btn primary">📌 Pick on Map</button>
-                <div class="mc-file-actions">
-                    <button id="mc-export-btn" class="mc-btn secondary">Export</button>
-                    <label for="mc-import-input" class="mc-btn secondary">Import</label>
-                    <input type="file" id="mc-import-input" accept=".json" style="display:none">
-                </div>
+
                  <div class="mc-sync-section" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
                     <div style="font-size:10px; color:#666; margin-bottom:4px;">Server: <span id="mc-server-status">🔴</span></div>
                     <button id="mc-config-btn" class="mc-btn secondary" style="font-size: 0.8em; margin-bottom: 5px;">⚙️ Config URL</button>
@@ -136,8 +132,7 @@ const createUI = () => {
 
     document.getElementById('mc-toggle-btn').addEventListener('click', toggleUI);
     document.getElementById('mc-add-btn').addEventListener('click', togglePickMode);
-    document.getElementById('mc-export-btn').addEventListener('click', handleExport);
-    document.getElementById('mc-import-input').addEventListener('change', handleImport);
+
     document.getElementById('mc-sync-btn').addEventListener('click', () => performSync(true));
     document.getElementById('mc-config-btn').addEventListener('click', handleConfig);
     overlay.addEventListener('click', handleMapClick);
@@ -261,7 +256,9 @@ const renderPoints = () => {
             e.stopPropagation();
             if (confirm('Delete?')) {
                 points = points.filter(x => x.id !== p.id);
-                savePoints(); renderPoints(); performSync(false); // Push on delete
+                pendingDeletes.add(p.id);
+                renderPoints();
+                performSync(true);
             }
         };
         list.appendChild(d);
@@ -276,15 +273,6 @@ const loadPoints = () => {
         if (r.serverUrl) { serverUrl = r.serverUrl; }
     });
 };
-const handleExport = () => {
-    const a = document.createElement('a');
-    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(points));
-    a.download = "points.json"; document.body.appendChild(a); a.click(); a.remove();
-};
-const handleImport = (e) => {
-    const f = e.target.files[0];
-    if (f) { const r = new FileReader(); r.onload = ev => { try { JSON.parse(ev.target.result).forEach(p => points.push(p)); savePoints(); renderPoints(); alert('Done'); } catch (e) { } }; r.readAsText(f); e.target.value = ''; }
-};
 
 const handleConfig = () => {
     const url = prompt('Enter Sync Server URL', serverUrl);
@@ -295,7 +283,10 @@ const handleConfig = () => {
     }
 };
 
-// --- AUTO SYNC ---
+// --- SYNC HELPERS ---
+// --- SYNC ENGINE ---
+let pendingDeletes = new Set();
+
 const startAutoSync = () => {
     if (autoSyncInterval) clearInterval(autoSyncInterval);
     autoSyncInterval = setInterval(() => performSync(false), 10000); // Poll every 10s
@@ -308,17 +299,28 @@ const performSync = async (manual) => {
     if (manual && btn) btn.innerText = '...';
 
     try {
-        // 1. GET (Poll)
         const r = await fetch(serverUrl);
         if (!r.ok) throw new Error('Fetch failed');
         const remotePoints = await r.json();
 
-        // 2. MERGE
+        const remoteIds = new Set(remotePoints.map(rp => rp.id));
+        for (const pd of pendingDeletes) {
+            if (!remoteIds.has(pd)) {
+                pendingDeletes.delete(pd);
+            }
+        }
+
         const map = new Map();
         points.forEach(p => map.set(p.id, p));
         let changed = false;
+
         remotePoints.forEach(p => {
-            if (!map.has(p.id)) { map.set(p.id, p); changed = true; }
+            if (!map.has(p.id)) {
+                if (!pendingDeletes.has(p.id)) {
+                    map.set(p.id, p);
+                    changed = true;
+                }
+            }
         });
 
         if (changed) {
@@ -327,7 +329,6 @@ const performSync = async (manual) => {
             renderPoints();
         }
 
-        // 3. POST (Push) - if we have data
         await fetch(serverUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -338,9 +339,8 @@ const performSync = async (manual) => {
         if (manual) alert('Sync Complete!');
 
     } catch (e) {
-        console.error(e);
         if (status) status.innerText = '🔴';
-        if (manual) alert('Sync Failed: Check URL');
+        if (manual) alert('Sync Failed: Check URL or Server Status');
     } finally {
         if (manual && btn) btn.innerText = '🔄 Sync Now';
     }
